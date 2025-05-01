@@ -9,6 +9,8 @@ from textgrad.tasks import load_task
 import numpy as np
 import random
 import json
+from revolve.optimizer import TextualGradientDescent, TextualGradientDescentwithMomentum, TextualGradientDescent_v2
+
 
 
 def set_seed(seed):
@@ -19,7 +21,8 @@ def set_seed(seed):
 def config():
     parser = argparse.ArgumentParser(description="Optimize a prompt for a task.")
     parser.add_argument("--task", type=str, default="BBH_object_counting", help="The task to evaluate the model on.")
-    parser.add_argument("--backbone_engine", type=str, default="azure-gpt4o", help="The backbone engine for textgrad.")
+    parser.add_argument("--eval_backbone_engine", type=str, default="azure-gpt4o", help="The model to do evaluation.")
+    parser.add_argument("--feedback_model", type=str, default="gpt-4o", help="The model to give feedback")
     parser.add_argument("--model", type=str, default="meta-llama/Meta-Llama-3.1-8B-Instruct", help="The model on which the prompt is optimized.")
     parser.add_argument("--optimizer_version", type=str, default="v1", help="The optimizer to use.")
     parser.add_argument("--batch_size", type=int, default=3, help="The batch size to use for training.")
@@ -97,11 +100,16 @@ def get_eval_output(x, y, model, eval_fn):
 args = config()
 print(vars(args))
 set_seed(args.seed)
-if 'llama' in args.backbone_engine:
-    llm_api = tg.get_engine(engine_name=args.backbone_engine, batch_size=args.num_threads)
+if 'llama' in args.eval_backbone_engine:
+    llm_api = tg.get_engine(engine_name=args.eval_backbone_engine, batch_size=args.num_threads)
 else:
-    llm_api = tg.get_engine(engine_name=args.backbone_engine)
-tg.set_backward_engine(llm_api, override=True)
+    llm_api = tg.get_engine(engine_name=args.eval_backbone_engine)
+
+if 'llama' in args.feedback_model:
+    tg.set_backward_engine("experimental:huggingface/meta-llama/Llama-3.2-1B-Instruct", cache=False) # only sample, need to modify
+else:
+    tg.set_backward_engine(args.feedback_model) 
+
 
 # Load the data and the evaluation function
 train_set, val_set, test_set, eval_fn = load_task(args.task, evaluation_api=llm_api)
@@ -122,11 +130,11 @@ else:
 model = tg.BlackboxLLM(model_api, system_prompt)
 
 if args.optimizer_version == "v1":
-    optimizer = tg.TextualGradientDescent(engine=llm_api, parameters=[system_prompt])
+    optimizer = TextualGradientDescent(engine=llm_api, parameters=[system_prompt])
 elif args.optimizer_version == "v1_momentum":
-    optimizer = tg.TextualGradientDescentwithMomentum(engine=llm_api, parameters=[system_prompt], momentum_window=12)
+    optimizer = TextualGradientDescentwithMomentum(engine=llm_api, parameters=[system_prompt], momentum_window=12)
 elif args.optimizer_version == "v2":
-    optimizer = tg.TextualGradientDescent_v2(engine=llm_api, parameters=[system_prompt])
+    optimizer = TextualGradientDescent_v2(engine=llm_api, parameters=[system_prompt])
 else:
     raise ValueError(f"Invalid optimizer version: {args.optimizer_version}")
 
@@ -168,6 +176,6 @@ for epoch in range(args.max_epochs):
             break
 
 os.makedirs("./results", exist_ok=True)
-model_name = args.backbone_engine.split("/")[-1]
+model_name = args.eval_backbone_engine.split("/")[-1]
 with open(f"./results/results_{args.task}_{model_name}_{args.optimizer_version}.json", "w") as f:
     json.dump(results, f)

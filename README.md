@@ -11,6 +11,24 @@
 [#pypi-package]: https://pypi.org/project/revolve/
 <!--- BADGES: END --->
 
+## Inference GSM8K
+
+`pip install revolve`
+
+- Usage
+```
+    python evaluation/prompt_optimization.py \ 
+    --task GSM8K_DSPy \
+    --eval_backbone_engine gpt-4o \
+    --feedback_model $FEEDBACKMODEL \
+    --model gpt-3.5-turbo \
+    --num_threads 10 \
+    --optimizer_version v2
+```
+
+- Same as textgrad inference, the part of llama API will be checked ASAP, please follow the same direction with textgrad if you need.
+
+
 ## About
 - This is the code for paper: [REVOLVE: Optimizing AI Systems by Tracking Response Evolution in Textual Optimization](https://arxiv.org/pdf/2412.03092).
 - REVOLVE is an optimization framework that enhances the stability and efficiency of AI system optimization by tracking the evolution of model responses across iterations. Building on textual feedback from LLMs, Revolve simulates higher-order optimization effects, ensuring that adjustments are guided not only by immediate feedback but also by the model’s performance trajectory, leading to faster and more stable optimization without relying on traditional derivative-based methods.
