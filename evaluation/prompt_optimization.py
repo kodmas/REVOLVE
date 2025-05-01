@@ -174,6 +174,11 @@ for epoch in range(args.max_epochs):
         results["prompt"].append(system_prompt.get_value())
         if steps == 11:
             break
+        
+print("======= Final Results =======\n")
+print("Final Prompt", results["prompt"][-1])
+print("\n")
+print("Test acc = ", np.mean(results["test_acc"][-1])) # This is the final test Accuracy
 
 os.makedirs("./results", exist_ok=True)
 model_name = args.eval_backbone_engine.split("/")[-1]
